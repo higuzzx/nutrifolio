@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>TAP — Nutrifolio</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --orange:#f26a21; --ink:#263238; --muted:#66747b; --line:#d9e0e3; --soft:#f4f6f7; --green:#dcefe3; --green-ink:#23633e; --blue:#eaf2f7; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#e7eaeb; color:var(--ink); font-family:Arial, Helvetica, sans-serif; font-size:10.5pt; line-height:1.45; }
+  .page { width:210mm; min-height:297mm; margin:0 auto 12px; padding:17mm 18mm 15mm; background:white; position:relative; page-break-after:always; overflow:hidden; }
+  .page:last-child { page-break-after:auto; }
+  .cover { padding:20mm 20mm 15mm; display:flex; flex-direction:column; justify-content:space-between; }
+  .cover-top { display:flex; justify-content:space-between; align-items:flex-start; }
+  .logo { display:flex; align-items:center; gap:8px; color:var(--orange); font-weight:800; font-size:17pt; letter-spacing:-.8px; }
+  .logo-mark { width:28px; height:28px; border:3px solid var(--orange); border-radius:9px 14px 9px 14px; transform:rotate(-12deg); display:flex; align-items:center; justify-content:center; font-size:18pt; line-height:1; }
+  .doc-label { color:#718087; font-size:8.5pt; text-align:right; text-transform:uppercase; letter-spacing:1.1px; }
+  .cover-middle { margin-top:30mm; }
+  .kicker { color:var(--orange); font-size:10pt; font-weight:700; text-transform:uppercase; letter-spacing:1.8px; margin-bottom:12px; }
+  h1 { font-size:34pt; line-height:1.05; letter-spacing:-1.4px; margin:0 0 16px; color:#202b30; }
+  .cover-title-line { width:68mm; height:5px; background:var(--orange); margin-bottom:22px; }
+  .cover-subtitle { max-width:135mm; color:#526168; font-size:15pt; line-height:1.35; }
+  .cover-card { border-left:5px solid var(--orange); background:var(--soft); padding:16px 18px; width:100%; max-width:150mm; }
+  .cover-card strong { display:block; font-size:11pt; margin-bottom:7px; }
+  .cover-card span { color:var(--muted); }
+  .cover-bottom { border-top:1px solid var(--line); padding-top:12px; display:flex; justify-content:space-between; color:var(--muted); font-size:9pt; }
+  .header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--orange); padding-bottom:9px; margin-bottom:18px; }
+  .header .logo { font-size:11pt; }
+  .header .logo-mark { width:21px; height:21px; border-width:2px; font-size:13pt; }
+  .header-right { color:#819097; font-size:8.5pt; }
+  h2 { font-size:20pt; line-height:1.15; letter-spacing:-.5px; margin:0 0 14px; color:#253136; }
+  h3 { font-size:12.5pt; color:#253136; margin:19px 0 7px; }
+  p { margin:6px 0 10px; }
+  .lead { font-size:11.5pt; color:#4d5c63; margin-bottom:18px; }
+  .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:15px 0 18px; }
+  .meta { background:var(--soft); border:1px solid var(--line); border-radius:5px; padding:10px 12px; min-height:52px; }
+  .meta-label { display:block; text-transform:uppercase; letter-spacing:.7px; color:#839198; font-size:8pt; font-weight:700; margin-bottom:3px; }
+  .meta-value { color:#263238; font-weight:600; }
+  .callout { background:var(--green); color:var(--green-ink); border-left:4px solid #5ba873; padding:12px 14px; margin:15px 0; border-radius:0 4px 4px 0; }
+  .callout strong { display:block; margin-bottom:3px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  .three-col { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .card { border:1px solid var(--line); border-radius:5px; padding:12px 13px; }
+  .card h3 { margin:0 0 6px; color:var(--orange); font-size:11.5pt; }
+  ul { margin:6px 0 10px; padding-left:18px; }
+  li { margin:5px 0; }
+  .checklist { list-style:none; padding-left:0; }
+  .checklist li { padding-left:19px; position:relative; }
+  .checklist li:before { content:'✓'; position:absolute; left:0; color:var(--orange); font-weight:bold; }
+  table { width:100%; border-collapse:collapse; margin:10px 0 16px; font-size:9.2pt; }
+  th { text-align:left; background:#31434a; color:#fff; padding:8px 9px; font-weight:700; }
+  td { border:1px solid var(--line); padding:8px 9px; vertical-align:top; }
+  tr:nth-child(even) td { background:#fafbfb; }
+  .tag { display:inline-block; border-radius:12px; padding:2px 8px; font-size:8pt; font-weight:700; background:var(--blue); color:#386273; }
+  .tag.orange { background:#fff0e7; color:#b84b16; }
+  .tag.green { background:var(--green); color:var(--green-ink); }
+  .phase { display:grid; grid-template-columns:35mm 1fr; border:1px solid var(--line); border-radius:5px; overflow:hidden; margin-bottom:10px; }
+  .phase-number { background:var(--orange); color:#fff; padding:12px; font-size:17pt; font-weight:800; display:flex; align-items:flex-start; }
+  .phase-content { padding:11px 13px; }
+  .phase-content strong { display:block; margin-bottom:4px; }
+  .phase-content span { color:var(--muted); font-size:9.5pt; }
+  .risk-high { color:#a8352e; font-weight:700; }
+  .risk-med { color:#ad711b; font-weight:700; }
+  .risk-low { color:#35774d; font-weight:700; }
+  .signature { margin-top:28px; display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+  .sign-line { border-top:1px solid #5d6b71; padding-top:6px; color:var(--muted); font-size:9pt; }
+  .footer { position:absolute; left:18mm; right:18mm; bottom:8mm; display:flex; justify-content:space-between; border-top:1px solid var(--line); padding-top:6px; color:#8a969b; font-size:8pt; }
+  .page-number:after { content:counter(page); }
+  .orange-text { color:var(--orange); }
+  .small { font-size:9pt; color:var(--muted); }
+  .scope-box { border:1px solid var(--line); padding:12px 14px; border-radius:5px; margin:8px 0; }
+  .scope-box.in { border-left:4px solid #4c9b68; }
+  .scope-box.out { border-left:4px solid #b8c0c4; }
+  .scope-box strong { display:block; margin-bottom:5px; }
+  .milestone { display:flex; align-items:center; gap:12px; margin:10px 0; }
+  .milestone-date { min-width:27mm; background:#fff0e7; color:#b84b16; padding:6px 8px; font-weight:700; border-radius:4px; text-align:center; font-size:9pt; }
+  .milestone-text strong { display:block; font-size:10pt; }
+  .milestone-text span { color:var(--muted); font-size:9pt; }
+  @media print { body { background:#fff; } .page { margin:0; } }
+</style>
+</head>
+<body>
+<section class="page cover">
+  <div class="cover-top"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="doc-label">Termo de Abertura<br>do Projeto · TAP</div></div>
+  <div class="cover-middle">
+    <div class="kicker">Documento de iniciação</div>
+    <h1>Nutrifolio</h1>
+    <div class="cover-title-line"></div>
+    <div class="cover-subtitle">Aplicativo web responsivo para acompanhamento nutricional, registro de refeições e visualização de progresso.</div>
+    <div style="height:22mm"></div>
+    <div class="cover-card"><strong>Produto digital</strong><span>Uma experiência simples e visual para transformar o registro alimentar em uma rotina de cuidado.</span></div>
+  </div>
+  <div class="cover-bottom"><span>Versão 1.0 · 11 de agosto de 2026</span><span>Uso acadêmico / prototipação</span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 01 / 07</div></div>
+  <h2>1. Identificação do projeto</h2>
+  <p class="lead">Este documento autoriza formalmente o início do projeto Nutrifolio e estabelece uma visão comum sobre o produto, seus objetivos, limites e critérios de sucesso.</p>
+  <div class="meta-grid">
+    <div class="meta"><span class="meta-label">Nome do projeto</span><span class="meta-value">Nutrifolio</span></div>
+    <div class="meta"><span class="meta-label">Tipo de solução</span><span class="meta-value">Aplicativo web responsivo</span></div>
+    <div class="meta"><span class="meta-label">Produto</span><span class="meta-value">Plataforma de acompanhamento nutricional</span></div>
+    <div class="meta"><span class="meta-label">Versão de referência</span><span class="meta-value">MVP visual navegável</span></div>
+    <div class="meta"><span class="meta-label">Data do documento</span><span class="meta-value">11 de agosto de 2026</span></div>
+    <div class="meta"><span class="meta-label">Responsável pelo produto</span><span class="meta-value">Equipe Nutrifolio</span></div>
+  </div>
+  <h3>1.1 Descrição resumida</h3>
+  <p>O Nutrifolio é uma experiência web com linguagem visual mobile-first que ajuda a pessoa usuária a acompanhar sua alimentação no dia a dia. O produto reúne um resumo diário, diário alimentar, indicadores de progresso, metas, macronutrientes e perfil em uma navegação curta e direta.</p>
+  <div class="callout"><strong>Decisão de produto</strong>O primeiro ciclo prioriza clareza, baixa fricção e feedback visual. O usuário deve entender sua situação nutricional em poucos segundos e conseguir registrar uma refeição sem sair do fluxo principal.</div>
+  <h3>1.2 Contexto</h3>
+  <p>O projeto parte de um protótipo visual que apresenta uma interface escura, contrastada e acolhedora, com o laranja como cor de ação. A solução foi construída como uma aplicação web que mantém a sensação de uso mobile mesmo em telas maiores.</p>
+  <div class="two-col">
+    <div class="card"><h3>Problema</h3><p>Registros alimentares costumam ser abandonados quando exigem muitos passos, exibem informação demais ou não mostram uma evolução compreensível.</p></div>
+    <div class="card"><h3>Oportunidade</h3><p>Oferecer uma visão diária objetiva, com ações rápidas e indicadores que incentivem consistência sem transformar o app em uma planilha.</p></div>
+  </div>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 02 / 07</div></div>
+  <h2>2. Justificativa e objetivos</h2>
+  <h3>2.1 Justificativa</h3>
+  <p>O acompanhamento nutricional depende mais da constância do que de uma ação isolada. O Nutrifolio foi idealizado para reduzir o esforço de registrar o que foi consumido e devolver ao usuário uma leitura visual clara do próprio comportamento.</p>
+  <div class="three-col">
+    <div class="card"><h3>Consciência</h3><p>Dar visibilidade às refeições e aos macronutrientes do dia.</p></div>
+    <div class="card"><h3>Constância</h3><p>Reforçar a rotina por meio de metas, histórico e progresso.</p></div>
+    <div class="card"><h3>Autonomia</h3><p>Permitir que a pessoa acompanhe a própria jornada sem depender de planilhas.</p></div>
+  </div>
+  <h3>2.2 Objetivo geral</h3>
+  <div class="callout"><strong>Objetivo geral</strong>Entregar uma aplicação web responsiva que torne o acompanhamento diário de alimentação simples, visual e motivador.</div>
+  <h3>2.3 Objetivos específicos</h3>
+  <ul class="checklist">
+    <li>Apresentar um resumo diário com calorias consumidas, meta e calorias restantes.</li>
+    <li>Permitir o registro de refeições por categoria e horário.</li>
+    <li>Exibir o acompanhamento de proteínas, carboidratos e gorduras.</li>
+    <li>Disponibilizar uma visão de diário alimentar com navegação por data.</li>
+    <li>Mostrar tendências de evolução por meio de gráficos e indicadores.</li>
+    <li>Centralizar preferências e informações da conta no perfil.</li>
+    <li>Oferecer uma ação rápida para adicionar alimentos por busca.</li>
+  </ul>
+  <h3>2.4 Benefícios esperados</h3>
+  <table><thead><tr><th>Beneficiário</th><th>Benefício esperado</th></tr></thead><tbody>
+    <tr><td>Pessoa usuária</td><td>Mais clareza sobre a rotina alimentar e menor esforço para registrar refeições.</td></tr>
+    <tr><td>Produto</td><td>Uma base visual consistente para evoluir com dados persistidos, conta e personalização.</td></tr>
+    <tr><td>Equipe</td><td>Escopo inicial definido, prioridades claras e critérios objetivos para validação.</td></tr>
+  </tbody></table>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 03 / 07</div></div>
+  <h2>3. Escopo do projeto</h2>
+  <p class="lead">O escopo abaixo descreve o que será considerado na primeira entrega do produto e evita que novas ideias desviem o foco do MVP.</p>
+  <h3>3.1 Entregas incluídas</h3>
+  <div class="scope-box in"><strong>Experiência principal</strong><span>Aplicação web responsiva com identidade visual do protótipo: fundo escuro, cartões de informação, cor de ação laranja, navegação inferior e foco em telas estreitas.</span></div>
+  <div class="scope-box in"><strong>Início</strong><span>Saudação personalizada, resumo de calorias, metas de macronutrientes, refeições do dia, insight de consistência e botão de adicionar refeição.</span></div>
+  <div class="scope-box in"><strong>Diário alimentar</strong><span>Navegação por data, visão semanal, total diário, refeições registradas e estado de incentivo ao registro.</span></div>
+  <div class="scope-box in"><strong>Progresso</strong><span>Resumo de calorias, período de análise, gráfico de média, déficit calórico, consistência e distribuição de macros.</span></div>
+  <div class="scope-box in"><strong>Perfil</strong><span>Dados da pessoa usuária, preferências, metas, lembretes, assinatura, relatórios, configurações e suporte.</span></div>
+  <div class="scope-box in"><strong>Adicionar refeição</strong><span>Janela de busca com sugestões de alimentos, valores nutricionais, ação de inclusão, scanner representado visualmente e confirmação.</span></div>
+  <h3>3.2 Fora do escopo desta versão</h3>
+  <div class="scope-box out"><strong>Integrações externas</strong><span>Sincronização com relógios, balanças, aplicativos de saúde ou bancos públicos de alimentos.</span></div>
+  <div class="scope-box out"><strong>Orientação clínica</strong><span>Prescrição de dieta, diagnóstico, recomendação médica ou substituição de acompanhamento profissional.</span></div>
+  <div class="scope-box out"><strong>Recursos avançados</strong><span>Comunidade social, chat com nutricionista, cobrança real, notificações push e reconhecimento automático de alimentos por câmera.</span></div>
+  <h3>3.3 Premissas</h3>
+  <ul><li>A primeira experiência será acessada principalmente em dispositivos móveis, mas deverá se adaptar ao navegador desktop.</li><li>Os dados exibidos no protótipo representam a experiência visual e serão substituídos por dados persistidos nas próximas fases.</li><li>O usuário entende que o app é uma ferramenta de acompanhamento e não uma orientação clínica.</li></ul>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 04 / 07</div></div>
+  <h2>4. Produto e requisitos de alto nível</h2>
+  <h3>4.1 Visão da solução</h3>
+  <p>O produto é organizado em quatro áreas principais, acessíveis por uma barra de navegação inferior. Uma ação flutuante persistente permite abrir o fluxo de adicionar refeição a partir de qualquer área.</p>
+  <table><thead><tr><th>Área</th><th>Responsabilidade</th><th>Resultado para o usuário</th></tr></thead><tbody>
+    <tr><td><strong>Início</strong></td><td>Concentrar o estado do dia</td><td>Entender rapidamente o que já foi consumido e o que falta.</td></tr>
+    <tr><td><strong>Diário</strong></td><td>Registrar e consultar refeições</td><td>Revisar a alimentação de hoje ou de uma data anterior.</td></tr>
+    <tr><td><strong>Progresso</strong></td><td>Mostrar tendências</td><td>Perceber consistência e evolução ao longo do tempo.</td></tr>
+    <tr><td><strong>Perfil</strong></td><td>Organizar conta e preferências</td><td>Encontrar configurações e informações pessoais em um só lugar.</td></tr>
+  </tbody></table>
+  <h3>4.2 Requisitos de experiência</h3>
+  <ul class="checklist">
+    <li>A interface deve manter contraste suficiente entre textos, fundos, cartões e ações.</li>
+    <li>As ações principais devem ser reconhecíveis por texto e ícone.</li>
+    <li>O fluxo de registro de alimento deve ser possível em poucos passos.</li>
+    <li>As telas devem funcionar em larguras móveis e em navegadores maiores sem perder a hierarquia visual.</li>
+    <li>Estados vazios, confirmações e feedbacks devem ser apresentados dentro da própria interface.</li>
+  </ul>
+  <h3>4.3 Requisitos funcionais prioritários</h3>
+  <table><thead><tr><th>ID</th><th>Requisito</th><th>Prioridade</th></tr></thead><tbody>
+    <tr><td>RF-01</td><td>Alternar entre Início, Diário, Progresso e Perfil pela navegação principal.</td><td><span class="tag orange">Alta</span></td></tr>
+    <tr><td>RF-02</td><td>Exibir calorias, metas, refeições e macronutrientes do dia.</td><td><span class="tag orange">Alta</span></td></tr>
+    <tr><td>RF-03</td><td>Abrir o fluxo de adicionar refeição pelo botão principal.</td><td><span class="tag orange">Alta</span></td></tr>
+    <tr><td>RF-04</td><td>Filtrar sugestões de alimentos por texto digitado.</td><td><span class="tag">Média</span></td></tr>
+    <tr><td>RF-05</td><td>Visualizar indicadores de progresso em formato gráfico.</td><td><span class="tag">Média</span></td></tr>
+    <tr><td>RF-06</td><td>Adaptar o layout para web e diferentes larguras de tela.</td><td><span class="tag orange">Alta</span></td></tr>
+  </tbody></table>
+  <h3>4.4 Requisitos não funcionais</h3>
+  <div class="two-col"><div class="card"><h3>Usabilidade</h3><p>Textos objetivos, ações previsíveis e navegação sem excesso de camadas.</p></div><div class="card"><h3>Desempenho</h3><p>Carregamento inicial enxuto e imagens usadas apenas onde agregam contexto.</p></div><div class="card"><h3>Acessibilidade</h3><p>Contraste, alvos de toque confortáveis e rótulos visíveis nas ações principais.</p></div><div class="card"><h3>Manutenção</h3><p>Organização por telas e responsabilidades, permitindo evolução incremental.</p></div></div>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 05 / 07</div></div>
+  <h2>5. Partes interessadas e responsabilidades</h2>
+  <p class="lead">A identificação das partes interessadas ajuda a direcionar as decisões do produto e a validar se a solução está resolvendo o problema certo.</p>
+  <table><thead><tr><th>Parte interessada</th><th>Interesse</th><th>Influência</th><th>Participação esperada</th></tr></thead><tbody>
+    <tr><td><strong>Pessoa usuária</strong></td><td>Registrar a alimentação com facilidade e entender sua evolução.</td><td><span class="tag orange">Alta</span></td><td>Testar fluxos, apontar fricções e validar clareza.</td></tr>
+    <tr><td><strong>Responsável pelo produto</strong></td><td>Garantir que a experiência entregue a proposta do Nutrifolio.</td><td><span class="tag orange">Alta</span></td><td>Priorizar escopo, aprovar decisões e acompanhar resultados.</td></tr>
+    <tr><td><strong>Equipe de design</strong></td><td>Preservar identidade visual e usabilidade.</td><td><span class="tag">Média</span></td><td>Definir padrões visuais, hierarquia e estados da interface.</td></tr>
+    <tr><td><strong>Equipe de desenvolvimento</strong></td><td>Construir uma base funcional, responsiva e sustentável.</td><td><span class="tag orange">Alta</span></td><td>Implementar, testar e corrigir a experiência.</td></tr>
+    <tr><td><strong>Profissional de nutrição</strong></td><td>Contribuir para a linguagem responsável dos dados nutricionais.</td><td><span class="tag">Média</span></td><td>Revisar termos e limites de comunicação do produto.</td></tr>
+  </tbody></table>
+  <h3>5.1 Matriz de comunicação</h3>
+  <table><thead><tr><th>Informação</th><th>Frequência</th><th>Canal</th><th>Responsável</th></tr></thead><tbody>
+    <tr><td>Estado do desenvolvimento</td><td>Semanal</td><td>Registro de acompanhamento</td><td>Equipe do projeto</td></tr>
+    <tr><td>Decisões de escopo</td><td>Sob demanda</td><td>Reunião ou documentação</td><td>Responsável pelo produto</td></tr>
+    <tr><td>Resultados de testes</td><td>A cada ciclo</td><td>Relatório de validação</td><td>Design e produto</td></tr>
+    <tr><td>Riscos e bloqueios</td><td>Contínua</td><td>Ritual de acompanhamento</td><td>Equipe do projeto</td></tr>
+  </tbody></table>
+  <h3>5.2 Governança da decisão</h3>
+  <p>Decisões que afetem o escopo, a segurança dos dados ou a compreensão de informações nutricionais devem ser registradas e aprovadas pelo responsável pelo produto antes de entrarem no ciclo de implementação.</p>
+  <div class="callout"><strong>Princípio de alinhamento</strong>Quando houver conflito entre adicionar uma nova função e manter o registro diário simples, a prioridade será preservar o fluxo principal.</div>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 06 / 07</div></div>
+  <h2>6. Cronograma de alto nível</h2>
+  <p class="lead">O cronograma é organizado em ciclos curtos para permitir validação frequente da experiência e controle do escopo.</p>
+  <div class="phase"><div class="phase-number">01</div><div class="phase-content"><strong>Fundação e direção visual</strong><span>Definição do problema, tom de voz, identidade visual, estrutura de navegação e critérios de sucesso.</span></div></div>
+  <div class="phase"><div class="phase-number">02</div><div class="phase-content"><strong>Experiência principal</strong><span>Construção das telas Início, Diário, Progresso e Perfil com navegação responsiva.</span></div></div>
+  <div class="phase"><div class="phase-number">03</div><div class="phase-content"><strong>Registro de refeições</strong><span>Implementação da janela de adicionar alimento, busca, sugestões, confirmação e estados da interface.</span></div></div>
+  <div class="phase"><div class="phase-number">04</div><div class="phase-content"><strong>Validação e refinamento</strong><span>Revisão de contraste, responsividade, hierarquia, textos, interações e correções de regressão.</span></div></div>
+  <h3>6.1 Marcos de acompanhamento</h3>
+  <div class="milestone"><div class="milestone-date">M1</div><div class="milestone-text"><strong>Protótipo navegável</strong><span>Fluxo visual completo entre as quatro áreas principais.</span></div></div>
+  <div class="milestone"><div class="milestone-date">M2</div><div class="milestone-text"><strong>Fluxo de refeição</strong><span>Busca, seleção e confirmação de alimento disponíveis.</span></div></div>
+  <div class="milestone"><div class="milestone-date">M3</div><div class="milestone-text"><strong>Revisão de qualidade</strong><span>Interface validada em diferentes larguras e com estados principais cobertos.</span></div></div>
+  <h3>6.2 Critérios de aceite do MVP</h3>
+  <table><thead><tr><th>Critério</th><th>Como verificar</th><th>Status esperado</th></tr></thead><tbody>
+    <tr><td>Navegação principal funcional</td><td>Selecionar cada item da barra inferior.</td><td><span class="tag green">Obrigatório</span></td></tr>
+    <tr><td>Resumo legível</td><td>Verificar números, títulos, contraste e hierarquia.</td><td><span class="tag green">Obrigatório</span></td></tr>
+    <tr><td>Adicionar refeição</td><td>Abrir pelo botão, buscar, selecionar e fechar.</td><td><span class="tag green">Obrigatório</span></td></tr>
+    <tr><td>Responsividade</td><td>Testar tela estreita e navegador desktop.</td><td><span class="tag green">Obrigatório</span></td></tr>
+    <tr><td>Dados persistidos</td><td>Registrar e recuperar dados após recarregar.</td><td><span class="tag">Próxima fase</span></td></tr>
+  </tbody></table>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+
+<section class="page">
+  <div class="header"><div class="logo"><span class="logo-mark">n</span>nutrifolio</div><div class="header-right">TAP · 07 / 07</div></div>
+  <h2>7. Riscos, premissas e aprovação</h2>
+  <h3>7.1 Registro inicial de riscos</h3>
+  <table><thead><tr><th>Risco</th><th>Probabilidade</th><th>Impacto</th><th>Resposta planejada</th></tr></thead><tbody>
+    <tr><td>O registro de refeições ficar complexo demais.</td><td><span class="risk-med">Média</span></td><td><span class="risk-high">Alto</span></td><td>Priorizar busca rápida, sugestões e confirmação curta; validar com usuários.</td></tr>
+    <tr><td>Informações nutricionais serem interpretadas como recomendação clínica.</td><td><span class="risk-med">Média</span></td><td><span class="risk-high">Alto</span></td><td>Usar linguagem de acompanhamento e manter limites claros no produto.</td></tr>
+    <tr><td>O layout perder clareza em telas muito largas ou estreitas.</td><td><span class="risk-med">Média</span></td><td><span class="risk-med">Médio</span></td><td>Testar pontos de quebra e manter o conteúdo centralizado em desktop.</td></tr>
+    <tr><td>Novas funcionalidades ampliarem o escopo do MVP.</td><td><span class="risk-high">Alta</span></td><td><span class="risk-med">Médio</span></td><td>Registrar solicitações como evolução futura e proteger o fluxo principal.</td></tr>
+    <tr><td>Dados reais exigirem regras de privacidade e acesso.</td><td><span class="risk-med">Média</span></td><td><span class="risk-high">Alto</span></td><td>Tratar persistência, autenticação e permissões como etapa própria antes do lançamento.</td></tr>
+  </tbody></table>
+  <h3>7.2 Critérios de sucesso</h3>
+  <ul class="checklist"><li>A pessoa usuária entende o resumo diário sem explicação externa.</li><li>O fluxo de registrar uma refeição é percebido como simples e rápido.</li><li>As quatro áreas principais são encontradas sem ambiguidade.</li><li>A interface mantém contraste, consistência e legibilidade no web mobile-first.</li><li>O protótipo serve como base clara para a próxima etapa de dados e personalização.</li></ul>
+  <h3>7.3 Aprovação</h3>
+  <p>Ao aprovar este TAP, as partes interessadas reconhecem a finalidade do projeto, o escopo inicial, as premissas, os riscos e os critérios de aceite descritos neste documento.</p>
+  <div class="signature"><div class="sign-line">Responsável pelo produto<br><strong>Nome e assinatura</strong></div><div class="sign-line">Representante da equipe<br><strong>Nome e assinatura</strong></div></div>
+  <div class="signature"><div class="sign-line">Data de aprovação<br><strong>____ / ____ / ______</strong></div><div class="sign-line">Versão aprovada<br><strong>1.0</strong></div></div>
+  <div class="callout" style="margin-top:22px"><strong>Encerramento</strong>O Nutrifolio está autorizado a avançar como um MVP de acompanhamento nutricional com foco em clareza, constância e uma experiência de registro acolhedora.</div>
+  <div class="footer"><span>Nutrifolio · Termo de Abertura do Projeto</span><span class="page-number">Página </span></div>
+</section>
+</body>
+</html>
