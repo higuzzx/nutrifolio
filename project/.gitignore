@@ -38,3 +38,7 @@ yarn-error.*
 test-results/
 playwright-report/
 dist-native/
+
+# banco local da API
+server/*.db
+server/*.db-*

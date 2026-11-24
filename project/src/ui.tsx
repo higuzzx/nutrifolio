@@ -92,11 +92,17 @@ export function Field({
   value,
   onChange,
   numeric = false,
+  multiline = false,
+  placeholder,
+  secure = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   numeric?: boolean;
+  multiline?: boolean;
+  placeholder?: string;
+  secure?: boolean;
 }) {
   return (
     <View style={{ gap: 7, marginBottom: 15 }}>
@@ -107,8 +113,15 @@ export function Field({
         onChangeText={onChange}
         keyboardType={numeric ? 'decimal-pad' : 'default'}
         autoCapitalize="none"
+        multiline={multiline}
+        secureTextEntry={secure}
+        autoCorrect={!secure}
+        placeholder={placeholder}
         placeholderTextColor={muted}
-        style={s.input}
+        style={[
+          s.input,
+          multiline && { minHeight: 84, textAlignVertical: 'top' },
+        ]}
       />
     </View>
   );

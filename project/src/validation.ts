@@ -4,13 +4,14 @@ const finite = (x: unknown): x is number =>
   typeof x === 'number' && Number.isFinite(x) && x >= 0;
 const nutrients = (x: any) =>
   x && ['calories', 'protein', 'carbs', 'fat'].every((k) => finite(x[k]));
-const food = (x: any) =>
+export const food = (x: any) =>
   x &&
   text(x.id) &&
   text(x.name) &&
   text(x.emoji) &&
   nutrients(x) &&
-  (!x.barcode || /^\d{8,14}$/.test(x.barcode));
+  (!x.barcode || /^\d{8,14}$/.test(x.barcode)) &&
+  (x.image === undefined || (text(x.image) && x.image.startsWith('https://')));
 export function validateData(d: unknown): d is Data {
   const x = d as any;
   return (
@@ -60,6 +61,9 @@ export function validateData(d: unknown): d is Data {
     Array.isArray(x.favorites) &&
     x.favorites.every(text) &&
     text(x.reminder) &&
-    (!x.reminder || validTime(x.reminder))
+    (!x.reminder || validTime(x.reminder)) &&
+    (x.mealTypes === undefined ||
+      (Array.isArray(x.mealTypes) &&
+        x.mealTypes.every((t: unknown) => text(t) && t.trim().length > 0)))
   );
 }

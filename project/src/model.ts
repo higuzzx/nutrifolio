@@ -9,6 +9,11 @@ export type Food = Nutrients & {
   name: string;
   emoji: string;
   barcode?: string;
+  /** Foto do produto (Open Food Facts), sempre https. */
+  image?: string;
+  /** Origem: tabela TACO, Open Food Facts ou cadastro manual. */
+  source?: 'taco' | 'off';
+  category?: string;
 };
 export type Portion = { food: Food; grams: number };
 export type Meal = {
@@ -34,7 +39,34 @@ export type Data = {
   favorites: string[];
   reminder: string;
   onboarded: boolean;
+  /** Tipos de refeição criados pelo usuário, além dos padrões. */
+  mealTypes?: string[];
 };
+export type Role = 'patient' | 'nutritionist';
+export type DietMeal = {
+  id: string;
+  name: string;
+  time: string;
+  items: Portion[];
+  substitutions: string;
+  notes: string;
+};
+export type Diet = {
+  id: string;
+  nutritionistId: string;
+  patientId: string;
+  title: string;
+  notes: string;
+  meals: DietMeal[];
+  updatedAt: string;
+};
+export const defaultMealTypes = [
+  'Café da manhã',
+  'Almoço',
+  'Lanche',
+  'Jantar',
+  'Ceia',
+];
 export const today = () => localDate(new Date());
 export function localDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -229,3 +261,69 @@ export const initialData = (): Data => ({
   reminder: '',
   onboarded: false,
 });
+
+/** Une tipos padrão, personalizados e extras sem repetir (ignora acento/caixa). */
+export function mealTypeList(...groups: (string[] | undefined)[]) {
+  const seen = new Set<string>(),
+    out: string[] = [];
+  for (const name of [defaultMealTypes, ...groups].flatMap((g) => g || [])) {
+    const clean = name.trim(),
+      key = normalize(clean);
+    if (clean && !seen.has(key)) {
+      seen.add(key);
+      out.push(clean);
+    }
+  }
+  return out;
+}
+export const sameMealName = (a: string, b: string) =>
+  normalize(a.trim()) === normalize(b.trim());
+export const cleanCpf = (value: string) => value.replace(/\D/g, '');
+export function validCpf(value: string) {
+  const d = cleanCpf(value);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const digit = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return digit(9) === Number(d[9]) && digit(10) === Number(d[10]);
+}
+export function formatCpf(value: string) {
+  const d = cleanCpf(value).slice(0, 11);
+  return d
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+/** Mostra só o miolo do CPF, como em comprovantes: ***.456.789-** */
+export function maskCpf(value: string) {
+  const d = cleanCpf(value);
+  return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : '***';
+}
+export const dietTotals = (diet: Pick<Diet, 'meals'>) =>
+  totals(diet.meals.flatMap((m) => m.items));
+/** Compara o plano com o que foi registrado em uma data. */
+export function dayAdherence(
+  diet: Pick<Diet, 'meals'>,
+  meals: Meal[],
+  date: string,
+) {
+  const logged = meals.filter((m) => m.date === date);
+  const done = diet.meals
+    .filter((dm) => logged.some((m) => sameMealName(m.name, dm.name)))
+    .map((dm) => dm.id);
+  return {
+    planned: diet.meals.length,
+    done,
+    ratio: diet.meals.length ? done.length / diet.meals.length : 0,
+    consumed: totals(logged.flatMap((m) => m.items)),
+    target: dietTotals(diet),
+  };
+}
+export const adherenceSeries = (
+  diet: Pick<Diet, 'meals'>,
+  meals: Meal[],
+  days: string[],
+) => days.map((d) => dayAdherence(diet, meals, d).ratio);

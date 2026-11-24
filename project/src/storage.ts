@@ -2,8 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Data, initialData } from './model';
 import { validateData } from './validation';
 const KEY = '@nutrifolio/data/v1';
-export async function readData(): Promise<Data> {
-  const raw = await AsyncStorage.getItem(KEY);
+/** O convidado mantém a chave original; cada conta tem a sua. */
+const keyFor = (accountId?: string | null) =>
+  accountId ? `${KEY}:${accountId}` : KEY;
+export async function readData(accountId?: string | null): Promise<Data> {
+  const raw = await AsyncStorage.getItem(keyFor(accountId));
   if (!raw) return initialData();
   const d = JSON.parse(raw);
   if (!validateData(d))
@@ -11,10 +14,10 @@ export async function readData(): Promise<Data> {
   return d;
 }
 let queue = Promise.resolve();
-export function writeData(data: Data) {
+export function writeData(data: Data, accountId?: string | null) {
   const next = queue
     .catch(() => {})
-    .then(() => AsyncStorage.setItem(KEY, JSON.stringify(data)));
+    .then(() => AsyncStorage.setItem(keyFor(accountId), JSON.stringify(data)));
   queue = next;
   return next;
 }

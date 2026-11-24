@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "expo start",
+    "api": "node server/index.mjs",
     "build:web": "expo export --platform web",
     "lint": "tsc --noEmit && prettier --check app src tests playwright.config.ts",
     "typecheck": "tsc --noEmit",

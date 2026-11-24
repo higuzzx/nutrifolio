@@ -26,9 +26,14 @@ import {
   Flame,
   Heart,
   Home,
+  KeyRound,
+  LogOut,
   Menu,
   Plus,
+  Salad,
   Settings,
+  Stethoscope,
+  Tags,
   Target,
   Trash2,
   Trophy,
@@ -40,6 +45,13 @@ import {
   catalogue,
   daily,
   Data,
+  dayAdherence,
+  Diet,
+  DietMeal,
+  dietTotals,
+  formatCpf,
+  mealTypeList,
+  sameMealName,
   Food,
   initialData,
   Meal,
@@ -57,6 +69,19 @@ import {
 } from '../src/model';
 import { readData, writeData } from '../src/storage';
 import {
+  Account,
+  backend,
+  errorMessage,
+  foodsApi,
+  getSession,
+  Link,
+  setSession,
+} from '../src/backend';
+import { NutritionistApp } from '../src/nutritionist';
+import { EnterKind, Welcome, WelcomeMode } from '../src/welcome';
+import { ChangePassword } from '../src/password';
+import { FoodRow, FoodThumb, RemoteFoods } from '../src/foodSearch';
+import {
   Button,
   BrandMark,
   Card,
@@ -72,7 +97,7 @@ import {
   s,
   Txt,
 } from '../src/ui';
-type Page = 'Início' | 'Diário' | 'Progresso' | 'Perfil';
+type Page = 'Início' | 'Diário' | 'Dieta' | 'Progresso' | 'Perfil';
 type Sheet =
   | 'meal'
   | 'goals'
@@ -85,13 +110,22 @@ type Sheet =
   | 'scanner'
   | 'custom'
   | 'report'
+  | 'mealTypes'
+  | 'password'
   | null;
 const dateLabel = (d: string) =>
   new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'long',
   });
-export default function App() {
+function PatientApp({
+  account,
+  onSwitchAccount,
+}: {
+  /** `null` = convidado, sem vínculo com nutricionista. */
+  account: Account | null;
+  onSwitchAccount: (mode?: WelcomeMode) => void;
+}) {
   const [data, setData] = useState<Data>(initialData),
     [ready, setReady] = useState(false),
     [loadError, setLoadError] = useState(''),
@@ -116,17 +150,40 @@ export default function App() {
     [grams, setGrams] = useState('100'),
     [editingItem, setEditingItem] = useState<number | null>(null);
   const [form, setForm] = useState<Record<string, string>>({}),
-    [confirm, setConfirm] = useState<null | 'meal' | 'reset' | 'restore'>(null),
+    [confirm, setConfirm] = useState<
+      null | 'meal' | 'reset' | 'restore' | 'unlink'
+    >(null),
     [period, setPeriod] = useState(7),
     [progressTab, setProgressTab] = useState('Resumo');
   const [permission, requestPermission] = useCameraPermissions();
+  // Vínculo com nutricionista e dieta recebida.
+  const [links, setLinks] = useState<Link[]>([]),
+    [diet, setDiet] = useState<Diet | null>(null),
+    [newType, setNewType] = useState<string | null>(null);
+  async function refreshRemote() {
+    if (!account) return;
+    try {
+      const [l, d] = await Promise.all([
+        backend.links(),
+        backend.getDiet(account.id),
+      ]);
+      setLinks(l);
+      setDiet(d);
+    } catch {
+      /* Sem conexão com os dados compartilhados: mantém o último estado. */
+    }
+  }
+  useEffect(() => {
+    refreshRemote();
+  }, [page]);
   const load = () => {
     setLoadError('');
-    readData()
+    readData(account?.id)
       .then((d) => {
         current.current = d;
         setData(d);
         setReady(true);
+        if (account) sync(d);
       })
       .catch(() =>
         setLoadError(
@@ -154,16 +211,27 @@ export default function App() {
     });
     return () => sub.remove();
   }, [sheet, page]);
+  /** Envia o diário ao servidor; o nutricionista vinculado vê parte dele. */
+  function sync(next: Data, success?: string) {
+    backend
+      .pushData(next)
+      .catch(() =>
+        setMessage(
+          `${success ? success + '. ' : ''}Salvo no aparelho, mas sem sincronizar com o servidor.`,
+        ),
+      );
+  }
   async function commit(next: Data, success = 'Salvo com sucesso') {
     if (busy.current) return false;
     busy.current = true;
     setSaving(true);
     setError('');
     try {
-      await writeData(next);
+      await writeData(next, account?.id);
       current.current = next;
       setData(next);
       setMessage(success);
+      if (account) sync(next, success);
       return true;
     } catch {
       setError(
@@ -185,6 +253,7 @@ export default function App() {
   function open(value: Sheet) {
     setError('');
     setConfirm(null);
+    setNewType(null);
     setSheet(value);
     if (value === 'account') setForm({ ...data.profile });
     if (value === 'goals')
@@ -222,6 +291,39 @@ export default function App() {
     setOnlyFavorites(false);
     open('meal');
   }
+  /** Abre o formulário já preenchido com a refeição prescrita. */
+  function startFromDiet(dm: DietMeal) {
+    startMeal();
+    setItems(dm.items.map((i) => ({ food: { ...i.food }, grams: i.grams })));
+    setMealName(dm.name);
+    setMealTime(dm.time);
+    setMealDate(today());
+  }
+  async function addMealType(name: string) {
+    const clean = name.trim();
+    if (!clean || clean.length > 40) {
+      setError('Informe um nome de até 40 caracteres.');
+      return false;
+    }
+    if (mealTypeList(data.mealTypes).some((t) => sameMealName(t, clean))) {
+      setError('Este tipo de refeição já existe.');
+      return false;
+    }
+    return commit(
+      {
+        ...current.current,
+        mealTypes: [...(current.current.mealTypes || []), clean],
+      },
+      'Tipo de refeição criado',
+    );
+  }
+  const mealTypes = mealTypeList(
+    diet?.meals.map((m) => m.name),
+    data.mealTypes,
+  );
+  const activeLink = links.find((l) => l.status === 'active'),
+    invites = links.filter((l) => l.status === 'pending'),
+    todayPlan = diet ? dayAdherence(diet, data.meals, today()) : null;
   const field = (k: string) => (v: string) =>
     setForm((f) => ({ ...f, [k]: v }));
   const activeDate = page === 'Diário' ? date : today(),
@@ -482,15 +584,29 @@ export default function App() {
       );
     }
   }
-  function barcode(code: string) {
+  function pick(food: Food) {
+    setEditingItem(null);
+    setSelected(food);
+    setGrams('100');
+    setError('');
+    setSheet('meal');
+  }
+  /** Guarda um produto da internet entre os alimentos do aparelho. */
+  const remember = (d: Data, food: Food): Data =>
+    d.foods.some((f) => f.id === food.id) ||
+    catalogue.some((f) => f.id === food.id)
+      ? d
+      : { ...d, foods: [...d.foods, food] };
+  async function barcode(code: string) {
     if (scanned.current) return;
     scanned.current = true;
-    const food = foods.find((f) => f.barcode === code);
-    if (food) {
-      setEditingItem(null);
-      setSelected(food);
-      setGrams('100');
-      setSheet('meal');
+    const local = foods.find((f) => f.barcode === code);
+    if (local) return pick(local);
+    setMessage('Consultando o código na Open Food Facts…');
+    const remote = await foodsApi.barcode(code).catch(() => null);
+    if (remote) {
+      await commit(remember(current.current, remote), 'Produto encontrado');
+      pick(remote);
     } else {
       setForm({
         name: '',
@@ -501,7 +617,7 @@ export default function App() {
         barcode: code,
       });
       setSheet('custom');
-      setMessage('Código lido. Cadastre os valores do rótulo.');
+      setMessage('Produto não encontrado. Cadastre os valores do rótulo.');
     }
   }
   const mealList = (
@@ -743,6 +859,269 @@ export default function App() {
                 title="＋ Registrar refeição neste dia"
                 onPress={() => startMeal()}
               />
+            </>
+          )}
+          {page === 'Dieta' && (
+            <>
+              <Heading title="Minha dieta" />
+              {!account ? (
+                <Card>
+                  <Stethoscope color={orange} size={30} />
+                  <Txt style={[s.heading, { marginVertical: 15 }]}>
+                    Receba a dieta do seu nutricionista
+                  </Txt>
+                  <Txt style={[s.small, { lineHeight: 22, marginBottom: 20 }]}>
+                    Crie sua conta de paciente com CPF. Seu nutricionista envia
+                    um convite e, depois que você aceitar, a dieta aparece aqui.
+                    Seus registros atuais vão junto para a conta.
+                  </Txt>
+                  <Button
+                    title="Criar conta de paciente"
+                    onPress={() => onSwitchAccount('patient')}
+                  />
+                </Card>
+              ) : (
+                <>
+                  {invites.map((l) => (
+                    <Card key={l.id}>
+                      <Txt style={s.heading}>Convite de acompanhamento</Txt>
+                      <Txt
+                        style={[
+                          s.small,
+                          { lineHeight: 22, marginVertical: 14 },
+                        ]}
+                      >
+                        {l.nutritionistName} ({l.nutritionistCrn}) quer
+                        acompanhar sua alimentação. Ao aceitar, essa pessoa verá
+                        suas refeições, medidas e metas, e você receberá a dieta
+                        prescrita.
+                        {activeLink
+                          ? ` Seu vínculo atual com ${activeLink.nutritionistName} será encerrado.`
+                          : ''}
+                      </Txt>
+                      <Button
+                        title="Aceitar"
+                        disabled={saving}
+                        onPress={async () => {
+                          try {
+                            await backend.respondInvite(l.id, true);
+                            await backend.pushData(current.current);
+                            setMessage('Vínculo aceito');
+                          } catch (e) {
+                            setError(
+                              errorMessage(e, 'Não foi possível aceitar.'),
+                            );
+                          }
+                          refreshRemote();
+                        }}
+                      />
+                      <View style={{ height: 10 }} />
+                      <Button
+                        title="Recusar"
+                        secondary
+                        onPress={async () => {
+                          try {
+                            await backend.respondInvite(l.id, false);
+                          } catch (e) {
+                            setError(
+                              errorMessage(e, 'Não foi possível recusar.'),
+                            );
+                          }
+                          refreshRemote();
+                        }}
+                      />
+                    </Card>
+                  ))}
+                  {!activeLink && !invites.length && (
+                    <Empty
+                      title="Nenhum nutricionista vinculado"
+                      copy={`Informe seu CPF (${formatCpf(account.cpf)}) ao seu nutricionista. O convite aparece aqui.`}
+                    />
+                  )}
+                  {activeLink && (
+                    <View style={s.insight}>
+                      <Stethoscope color={orange} size={25} />
+                      <View style={{ flex: 1 }}>
+                        <Txt style={{ fontWeight: '600' }}>
+                          {activeLink.nutritionistName}
+                        </Txt>
+                        <Txt style={[s.small, { marginTop: 5 }]}>
+                          {activeLink.nutritionistCrn} · acompanha seus
+                          registros
+                        </Txt>
+                      </View>
+                    </View>
+                  )}
+                  {activeLink && !diet && (
+                    <Empty
+                      title="Dieta em preparação"
+                      copy="Seu nutricionista ainda não publicou o plano. Volte mais tarde."
+                    />
+                  )}
+                  {diet && todayPlan && (
+                    <>
+                      <Card>
+                        <Txt style={s.heading}>{diet.title}</Txt>
+                        <Txt style={[s.small, { marginTop: 8 }]}>
+                          {fmt(dietTotals(diet).calories)} kcal/dia · P{' '}
+                          {fmt(dietTotals(diet).protein)} g · C{' '}
+                          {fmt(dietTotals(diet).carbs)} g · G{' '}
+                          {fmt(dietTotals(diet).fat)} g
+                        </Txt>
+                        {!!diet.notes && (
+                          <Txt
+                            style={[s.small, { lineHeight: 22, marginTop: 14 }]}
+                          >
+                            {diet.notes}
+                          </Txt>
+                        )}
+                        <View style={s.track}>
+                          <View
+                            style={{
+                              height: 5,
+                              width: `${todayPlan.ratio * 100}%`,
+                              backgroundColor: orange,
+                            }}
+                          />
+                        </View>
+                        <Txt style={s.small}>
+                          Hoje: {todayPlan.done.length} de {todayPlan.planned}{' '}
+                          refeições registradas
+                        </Txt>
+                      </Card>
+                      {diet.meals
+                        .slice()
+                        .sort((a, b) => a.time.localeCompare(b.time))
+                        .map((dm) => {
+                          const done = todayPlan.done.includes(dm.id);
+                          return (
+                            <Card key={dm.id}>
+                              <View style={s.row}>
+                                <View style={{ flex: 1 }}>
+                                  <Txt style={s.heading}>{dm.name}</Txt>
+                                  <Txt style={[s.small, { marginTop: 4 }]}>
+                                    {dm.time} · {fmt(totals(dm.items).calories)}{' '}
+                                    kcal
+                                  </Txt>
+                                </View>
+                                {done && <Check color={orange} size={22} />}
+                              </View>
+                              <View style={{ marginVertical: 12 }}>
+                                {dm.items.map((i, k) => (
+                                  <Txt key={k} style={{ marginTop: 6 }}>
+                                    {i.food.emoji} {i.grams} g · {i.food.name}
+                                  </Txt>
+                                ))}
+                              </View>
+                              {!!dm.substitutions && (
+                                <Txt
+                                  style={[
+                                    s.small,
+                                    { lineHeight: 21, marginBottom: 8 },
+                                  ]}
+                                >
+                                  Substituições: {dm.substitutions}
+                                </Txt>
+                              )}
+                              {!!dm.notes && (
+                                <Txt
+                                  style={[
+                                    s.small,
+                                    { lineHeight: 21, marginBottom: 8 },
+                                  ]}
+                                >
+                                  Obs.: {dm.notes}
+                                </Txt>
+                              )}
+                              <View style={{ height: 6 }} />
+                              <Button
+                                title={
+                                  done
+                                    ? 'Registrar de novo'
+                                    : 'Registrar esta refeição'
+                                }
+                                secondary={done}
+                                onPress={() => startFromDiet(dm)}
+                              />
+                            </Card>
+                          );
+                        })}
+                      <Button
+                        title="Usar totais da dieta como minhas metas"
+                        secondary
+                        disabled={saving}
+                        onPress={() => {
+                          const t = dietTotals(diet);
+                          commit(
+                            {
+                              ...current.current,
+                              goals: {
+                                ...current.current.goals,
+                                calories: Math.max(1, Math.round(t.calories)),
+                                protein: Math.max(1, Math.round(t.protein)),
+                                carbs: Math.max(1, Math.round(t.carbs)),
+                                fat: Math.max(1, Math.round(t.fat)),
+                              },
+                            },
+                            'Metas atualizadas pela dieta',
+                          );
+                        }}
+                      />
+                    </>
+                  )}
+                  {activeLink && (
+                    <View style={{ marginTop: 12 }}>
+                      {confirm === 'unlink' ? (
+                        <View style={[s.card, { borderColor: '#9B4439' }]}>
+                          <Txt style={s.heading}>
+                            Desvincular nutricionista?
+                          </Txt>
+                          <Txt
+                            style={[
+                              s.small,
+                              { marginVertical: 16, lineHeight: 21 },
+                            ]}
+                          >
+                            {activeLink.nutritionistName} deixa de ver seus
+                            registros e a dieta sai desta aba. Seus registros
+                            continuam no app.
+                          </Txt>
+                          <Button
+                            title="Confirmar"
+                            onPress={async () => {
+                              try {
+                                await backend.endLink(activeLink.id);
+                                setMessage('Nutricionista desvinculado');
+                              } catch (e) {
+                                setError(
+                                  errorMessage(
+                                    e,
+                                    'Não foi possível desvincular.',
+                                  ),
+                                );
+                              }
+                              setConfirm(null);
+                              refreshRemote();
+                            }}
+                          />
+                          <View style={{ height: 10 }} />
+                          <Button
+                            title="Cancelar"
+                            secondary
+                            onPress={() => setConfirm(null)}
+                          />
+                        </View>
+                      ) : (
+                        <Button
+                          title="Desvincular nutricionista"
+                          secondary
+                          onPress={() => setConfirm('unlink')}
+                        />
+                      )}
+                    </View>
+                  )}
+                </>
+              )}
             </>
           )}
           {page === 'Progresso' && (
@@ -1055,6 +1434,11 @@ export default function App() {
                       key: 'goals',
                       Icon: Target,
                     },
+                    {
+                      title: 'Tipos de refeição',
+                      key: 'mealTypes',
+                      Icon: Tags,
+                    },
                     { title: 'Lembretes', key: 'reminder', Icon: Bell },
                     { title: 'Assinatura', key: 'subscription', Icon: Trophy },
                     { title: 'Relatórios', key: 'report', Icon: BarChart3 },
@@ -1078,9 +1462,46 @@ export default function App() {
                   </Pressable>
                 ))}
               </View>
+              <View style={s.list}>
+                <Pressable
+                  accessibilityRole="button"
+                  style={s.listRow}
+                  onPress={() => setPage('Dieta')}
+                >
+                  <Stethoscope size={21} color={orange} />
+                  <Txt style={{ flex: 1 }}>
+                    {activeLink
+                      ? `Nutricionista: ${activeLink.nutritionistName}`
+                      : 'Meu nutricionista'}
+                  </Txt>
+                  <ChevronRight color={muted} size={18} />
+                </Pressable>
+                {account && (
+                  <Pressable
+                    accessibilityRole="button"
+                    style={s.listRow}
+                    onPress={() => open('password')}
+                  >
+                    <KeyRound size={21} color={orange} />
+                    <Txt style={{ flex: 1 }}>Alterar senha</Txt>
+                    <ChevronRight color={muted} size={18} />
+                  </Pressable>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  style={s.listRow}
+                  onPress={() => onSwitchAccount()}
+                >
+                  <LogOut size={21} color={orange} />
+                  <Txt style={{ flex: 1 }}>
+                    {account ? 'Sair da conta' : 'Criar conta ou entrar'}
+                  </Txt>
+                  <ChevronRight color={muted} size={18} />
+                </Pressable>
+              </View>
               <Txt style={[s.small, { textAlign: 'center', marginTop: 25 }]}>
-                nutrifolio · registre. acompanhe. evolua.{'\n'}Versão 1.0.0 ·
-                Dados neste dispositivo
+                nutrifolio · registre. acompanhe. evolua.{'\n'}Versão 1.1.0 ·
+                {account ? ` ${account.email}` : ' Convidado'}
               </Txt>
             </>
           )}
@@ -1091,6 +1512,7 @@ export default function App() {
             [
               { name: 'Início', Icon: Home },
               { name: 'Diário', Icon: BookOpen },
+              { name: 'Dieta', Icon: Salad },
               { name: 'Progresso', Icon: BarChart3 },
               { name: 'Perfil', Icon: UserRound },
             ] as const
@@ -1133,48 +1555,6 @@ export default function App() {
           </View>
         )}
       </View>
-      <Modal
-        visible={!data.onboarded && !sheet}
-        animationType="fade"
-        onRequestClose={() => {}}
-      >
-        <SafeAreaView style={s.safe}>
-          <View style={[s.shell, { justifyContent: 'center', padding: 28 }]}>
-            <BrandMark size={76} />
-            <Txt style={{ fontSize: 40, fontWeight: '700', marginBottom: 14 }}>
-              nutri<Txt style={{ fontSize: 40, color: orange }}>folio</Txt>
-            </Txt>
-            <Txt style={[s.title, { marginTop: 25 }]}>
-              Sua nutrição,{'\n'}na palma da mão.
-            </Txt>
-            <Txt style={[s.small, { lineHeight: 25, marginVertical: 22 }]}>
-              Registre suas refeições, acompanhe sua evolução e construa uma
-              rotina com mais cuidado.
-            </Txt>
-            <Button
-              title="Personalizar meu perfil"
-              onPress={() => open('account')}
-            />
-            <View style={{ height: 12 }} />
-            <Button
-              title="Continuar como convidado"
-              secondary
-              disabled={saving}
-              onPress={() =>
-                commit(
-                  { ...current.current, onboarded: true },
-                  'Bem-vindo ao Nutrifolio',
-                )
-              }
-            />
-            <Txt style={[s.small, { fontSize: 12, marginTop: 24 }]}>
-              Seus registros ficam salvos neste dispositivo. Você pode
-              exportá-los ou apagá-los quando quiser.
-            </Txt>
-            {!!error && <Txt style={s.error}>{error}</Txt>}
-          </View>
-        </SafeAreaView>
-      </Modal>
       <Modal visible={!!sheet} animationType="slide" onRequestClose={close}>
         <SafeAreaView style={s.safe}>
           <KeyboardAvoidingView
@@ -1212,6 +1592,8 @@ export default function App() {
                         scanner: 'Scanner de alimento',
                         custom: 'Cadastrar alimento',
                         report: 'Relatórios',
+                        mealTypes: 'Tipos de refeição',
+                        password: 'Alterar senha',
                       } as any
                     )[sheet || '']}
               </Txt>
@@ -1227,15 +1609,25 @@ export default function App() {
                 (selected ? (
                   <>
                     <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                      <Txt style={{ fontSize: 85 }}>{selected.emoji}</Txt>
+                      <FoodThumb food={selected} size={120} />
                     </View>
                     <Heading title={selected.name} />
+                    {!!selected.source && (
+                      <Txt
+                        style={[s.small, { marginTop: -8, marginBottom: 12 }]}
+                      >
+                        Fonte:{' '}
+                        {selected.source === 'taco'
+                          ? `Tabela TACO (NEPA-Unicamp)${selected.category ? ` · ${selected.category}` : ''}`
+                          : 'Open Food Facts (dados colaborativos do rótulo)'}
+                      </Txt>
+                    )}
                     <Pressable
                       style={s.listRow}
                       onPress={() =>
                         commit(
                           {
-                            ...current.current,
+                            ...remember(current.current, selected),
                             favorites: data.favorites.includes(selected.id)
                               ? data.favorites.filter(
                                   (id) => id !== selected.id,
@@ -1336,13 +1728,7 @@ export default function App() {
                       style={{ marginBottom: 16 }}
                     >
                       <View style={{ flexDirection: 'row', gap: 8 }}>
-                        {[
-                          'Café da manhã',
-                          'Almoço',
-                          'Lanche',
-                          'Jantar',
-                          'Ceia',
-                        ].map((n) => (
+                        {mealTypes.map((n) => (
                           <Pressable
                             key={n}
                             style={[s.chip, mealName === n && s.chipActive]}
@@ -1351,8 +1737,40 @@ export default function App() {
                             <Txt style={s.small}>{n}</Txt>
                           </Pressable>
                         ))}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Criar tipo de refeição"
+                          style={s.chip}
+                          onPress={() => setNewType('')}
+                        >
+                          <Txt style={s.accent}>＋ Novo tipo</Txt>
+                        </Pressable>
                       </View>
                     </ScrollView>
+                    {newType !== null && (
+                      <View style={[s.row, { gap: 10, marginBottom: 16 }]}>
+                        <TextInput
+                          accessibilityLabel="Nome do novo tipo de refeição"
+                          placeholder="Ex.: Pré-treino"
+                          placeholderTextColor={muted}
+                          value={newType}
+                          onChangeText={setNewType}
+                          style={[s.input, { flex: 1 }]}
+                        />
+                        <Button
+                          title="Criar"
+                          secondary
+                          disabled={saving}
+                          onPress={async () => {
+                            if (await addMealType(newType)) {
+                              setMealName(newType.trim());
+                              setNewType(null);
+                              setError('');
+                            }
+                          }}
+                        />
+                      </View>
+                    )}
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                       <View style={{ flex: 1 }}>
                         <Field
@@ -1410,36 +1828,26 @@ export default function App() {
                       )
                       .slice(0, query || onlyFavorites ? 100 : 5)
                       .map((f) => (
-                        <Pressable
-                          key={f.id}
-                          style={s.listRow}
-                          onPress={() => {
-                            setSelected(f);
-                            setEditingItem(null);
-                            setGrams('100');
-                            setError('');
-                          }}
-                        >
-                          <Txt style={{ fontSize: 30 }}>{f.emoji}</Txt>
-                          <View style={{ flex: 1 }}>
-                            <Txt>{f.name}</Txt>
-                            <Txt style={[s.small, { marginTop: 4 }]}>
-                              100 g · {f.calories} kcal
-                            </Txt>
-                          </View>
-                          <Plus size={22} color={orange} />
-                        </Pressable>
+                        <FoodRow key={f.id} food={f} onPress={() => pick(f)} />
                       ))}
-                    {!foods.some(
-                      (f) =>
-                        normalize(f.name).includes(normalize(query)) &&
-                        (!onlyFavorites || data.favorites.includes(f.id)),
-                    ) && (
-                      <Empty
-                        title="Nenhum alimento encontrado"
-                        copy="Tente outra busca ou cadastre um alimento abaixo."
+                    {!onlyFavorites && (
+                      <RemoteFoods
+                        query={query}
+                        exclude={foods.map((f) => f.id)}
+                        onPick={pick}
                       />
                     )}
+                    {(onlyFavorites || query.trim().length < 3) &&
+                      !foods.some(
+                        (f) =>
+                          normalize(f.name).includes(normalize(query)) &&
+                          (!onlyFavorites || data.favorites.includes(f.id)),
+                      ) && (
+                        <Empty
+                          title="Nenhum alimento encontrado"
+                          copy="Tente outra busca ou cadastre um alimento abaixo."
+                        />
+                      )}
                     <Button
                       title="Cadastrar outro alimento"
                       secondary
@@ -1734,6 +2142,65 @@ export default function App() {
                   )}
                 </>
               )}
+              {sheet === 'password' && (
+                <ChangePassword
+                  onDone={(msg) => {
+                    setMessage(msg);
+                    close();
+                  }}
+                />
+              )}
+              {sheet === 'mealTypes' && (
+                <>
+                  <Txt style={[s.small, { lineHeight: 22, marginBottom: 20 }]}>
+                    Além dos tipos padrão, crie os seus (ex.: Pré-treino,
+                    Pós-treino). Eles aparecem ao registrar uma refeição.
+                  </Txt>
+                  <View style={s.list}>
+                    {mealTypeList().map((t) => (
+                      <View key={t} style={s.listRow}>
+                        <Txt style={{ flex: 1 }}>{t}</Txt>
+                        <Txt style={s.small}>Padrão</Txt>
+                      </View>
+                    ))}
+                    {(data.mealTypes || []).map((t) => (
+                      <View key={t} style={s.listRow}>
+                        <Txt style={{ flex: 1 }}>{t}</Txt>
+                        <IconButton
+                          label={`Excluir tipo ${t}`}
+                          onPress={() =>
+                            commit(
+                              {
+                                ...current.current,
+                                mealTypes: (
+                                  current.current.mealTypes || []
+                                ).filter((x) => x !== t),
+                              },
+                              'Tipo removido. Refeições já registradas não mudam.',
+                            )
+                          }
+                        >
+                          <Trash2 size={19} color={muted} />
+                        </IconButton>
+                      </View>
+                    ))}
+                  </View>
+                  <Field
+                    label="Novo tipo de refeição"
+                    value={form.mealType || ''}
+                    onChange={field('mealType')}
+                    placeholder="Ex.: Pré-treino"
+                  />
+                  <Button
+                    title="Criar tipo"
+                    disabled={saving}
+                    onPress={async () => {
+                      if (await addMealType(form.mealType || ''))
+                        setForm((f) => ({ ...f, mealType: '' }));
+                    }}
+                  />
+                </>
+              )}
               {sheet === 'report' && (
                 <>
                   <Heading title="Seu histórico em números" />
@@ -1801,12 +2268,16 @@ export default function App() {
                       a: 'O catálogo inicial contém valores médios aproximados por 100 g. Marcas e preparos variam. Cadastre os valores do rótulo quando precisar de maior precisão.',
                     },
                     {
-                      q: 'Meus dados ficam online?',
-                      a: 'Não. Esta versão mantém os dados no dispositivo. Desinstalar o app ou limpar os dados do navegador pode apagá-los. Use a exportação em Configurações para guardar uma cópia.',
+                      q: 'Onde ficam meus dados?',
+                      a: 'Com conta, seus registros ficam no aparelho e são sincronizados com o servidor do Nutrifolio. O nutricionista só vê refeições, medidas e metas, e só depois que você aceita o convite. Como convidado, nada sai do aparelho. Desinstalar o app ou limpar os dados do navegador pode apagá-los. Use a exportação em Configurações para guardar uma cópia.',
+                    },
+                    {
+                      q: 'Como recebo a dieta do meu nutricionista?',
+                      a: 'Crie uma conta de paciente com CPF e informe o CPF ao nutricionista. O convite aparece na aba Dieta. Depois que você aceitar, essa pessoa vê suas refeições e medidas, e a dieta aparece na aba. Você pode desvincular quando quiser.',
                     },
                     {
                       q: 'O aplicativo recomenda dietas?',
-                      a: 'Não. As metas são preenchidas por você e não substituem acompanhamento profissional.',
+                      a: 'Não. A dieta da aba Dieta é montada pelo seu nutricionista. As metas são suas e não substituem acompanhamento profissional.',
                     },
                   ].map((x) => (
                     <Card key={x.q}>
@@ -1961,7 +2432,12 @@ export default function App() {
                             return;
                           }
                         }
-                        if (await commit(initialData(), 'Dados apagados')) {
+                        if (
+                          await commit(
+                            { ...initialData(), onboarded: true },
+                            'Dados apagados',
+                          )
+                        ) {
                           setPage('Início');
                           close();
                         }
@@ -1986,5 +2462,140 @@ export default function App() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+type RootState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'welcome'; mode: WelcomeMode; notice?: string }
+  | { status: 'ready'; account: Account | null };
+
+/** Decide entre login, app do paciente (ou convidado) e app do nutricionista. */
+export default function Root() {
+  const [state, setState] = useState<RootState>({ status: 'loading' });
+  async function load() {
+    setState({ status: 'loading' });
+    try {
+      let session = await getSession();
+      if (!session) {
+        // Quem já usava o app antes das contas continua como convidado.
+        const legacy = await readData(null).catch(() => null);
+        if (legacy?.onboarded) {
+          session = { guest: true };
+          await setSession(session);
+        }
+      }
+      if (!session) return setState({ status: 'welcome', mode: 'home' });
+      if ('guest' in session)
+        return setState({ status: 'ready', account: null });
+      const account = await backend.me();
+      if (!account)
+        return setState({
+          status: 'welcome',
+          mode: 'login',
+          notice: 'Sua sessão expirou. Entre novamente.',
+        });
+      setState({ status: 'ready', account });
+    } catch (e) {
+      setState({
+        status: 'error',
+        message: errorMessage(e, 'Não foi possível abrir sua conta.'),
+      });
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+  async function enter(account: Account | null, kind: EnterKind) {
+    if (account?.role === 'patient') {
+      const local = await readData(account.id).catch(() => initialData());
+      if (kind === 'login') {
+        // Ao entrar, o servidor é a fonte da verdade (ex.: outro aparelho).
+        const remote = await backend.pullData();
+        if (remote) await writeData({ ...remote, onboarded: true }, account.id);
+        else if (!local.onboarded)
+          await writeData(
+            {
+              ...initialData(),
+              profile: { name: account.name, email: account.email },
+              onboarded: true,
+            },
+            account.id,
+          );
+      } else {
+        // Conta nova: leva junto o que foi registrado como convidado.
+        const guest = await readData(null).catch(() => initialData());
+        await writeData(
+          {
+            ...guest,
+            profile: { name: account.name, email: account.email },
+            onboarded: true,
+          },
+          account.id,
+        );
+      }
+    }
+    if (!account) {
+      const guest = await readData(null);
+      if (!guest.onboarded)
+        await writeData({ ...guest, onboarded: true }, null);
+      await setSession({ guest: true });
+    }
+    setState({ status: 'ready', account });
+  }
+  const leave = async (mode: WelcomeMode = 'home') => {
+    if (state.status === 'ready' && state.account)
+      await backend.logout().catch(() => {});
+    else await setSession(null);
+    setState({ status: 'welcome', mode });
+  };
+  if (state.status === 'loading' || state.status === 'error')
+    return (
+      <SafeAreaView style={s.safe}>
+        <View style={[s.shell, s.empty, { padding: 28 }]}>
+          {state.status === 'error' ? (
+            <>
+              <Txt style={{ textAlign: 'center', lineHeight: 22 }}>
+                {state.message}
+              </Txt>
+              <View style={{ height: 20 }} />
+              <Button title="Tentar novamente" onPress={load} />
+              <View style={{ height: 12 }} />
+              <Button
+                title="Usar como convidado"
+                secondary
+                onPress={() => enter(null, 'guest')}
+              />
+            </>
+          ) : (
+            <ActivityIndicator color={orange} />
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  if (state.status === 'welcome')
+    return (
+      <Welcome
+        key={state.mode}
+        initialMode={state.mode}
+        notice={state.notice}
+        onEnter={enter}
+      />
+    );
+  if (state.account?.role === 'nutritionist')
+    return (
+      <NutritionistApp
+        key={state.account.id}
+        account={state.account}
+        onSwitchAccount={() => leave()}
+      />
+    );
+  return (
+    <PatientApp
+      key={state.account?.id ?? 'guest'}
+      account={state.account}
+      onSwitchAccount={leave}
+    />
   );
 }
