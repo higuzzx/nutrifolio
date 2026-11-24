@@ -4,7 +4,9 @@ test('backup download, validation and restoration preserve profile', async ({
   page,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Personalizar meu perfil' }).click();
+  await page.getByRole('button', { name: 'Continuar como convidado' }).click();
+  await page.getByRole('tab', { name: 'Perfil', exact: true }).click();
+  await page.getByRole('button', { name: 'Minha conta' }).click();
   await page.getByLabel('Nome', { exact: true }).fill('Backup Teste');
   await page.getByRole('button', { name: 'Salvar perfil' }).click();
   await page.getByRole('tab', { name: 'Perfil', exact: true }).click();
@@ -36,9 +38,12 @@ test('mobile onboarding, meal CRUD, persistence, goals and progress', async ({
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'Personalizar meu perfil' }).click();
+  await page.getByRole('button', { name: 'Continuar como convidado' }).click();
+  await page.getByRole('tab', { name: 'Perfil', exact: true }).click();
+  await page.getByRole('button', { name: 'Minha conta' }).click();
   await page.getByLabel('Nome', { exact: true }).fill('Pessoa Teste');
   await page.getByRole('button', { name: 'Salvar perfil' }).click();
+  await page.getByRole('tab', { name: 'Início', exact: true }).click();
   await expect(page.getByText('Olá, Pessoa')).toBeVisible();
   await page
     .getByRole('button', { name: 'Adicionar refeição', exact: true })

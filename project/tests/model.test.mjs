@@ -10,6 +10,13 @@ import {
   validTime,
   normalize,
   initialData,
+  validCpf,
+  formatCpf,
+  maskCpf,
+  mealTypeList,
+  dayAdherence,
+  adherenceSeries,
+  dietTotals,
 } from '../src/model.ts';
 const meal = (date, items = []) => ({
   id: date,
@@ -62,4 +69,60 @@ test('new profiles contain no fabricated records and are independent', () => {
   a.meals.push(meal('2026-09-08'));
   assert.equal(b.meals.length, 0);
   assert.equal(b.measurements.length, 0);
+});
+test('CPF validation checks digits and rejects repeated sequences', () => {
+  assert.equal(validCpf('529.982.247-25'), true);
+  assert.equal(validCpf('52998224725'), true);
+  assert.equal(validCpf('529.982.247-24'), false);
+  assert.equal(validCpf('111.111.111-11'), false);
+  assert.equal(validCpf('123'), false);
+  assert.equal(formatCpf('52998224725'), '529.982.247-25');
+  assert.equal(formatCpf('5299'), '529.9');
+  assert.equal(maskCpf('52998224725'), '***.982.247-**');
+});
+test('custom meal types extend defaults without duplicates', () => {
+  const list = mealTypeList(['Pré-treino', 'almoco', '  '], ['pre-treino']);
+  assert.equal(list.filter((t) => normalize(t) === 'almoco').length, 1);
+  assert.equal(list.filter((t) => normalize(t) === 'pre-treino').length, 1);
+  assert.ok(list.includes('Café da manhã'));
+  assert.ok(!list.includes(''));
+});
+test('diet adherence matches logged meals by name on the same day', () => {
+  const diet = {
+    meals: [
+      {
+        id: 'a',
+        name: 'Café da manhã',
+        time: '07:00',
+        items: [{ food: catalogue[4], grams: 100 }],
+        substitutions: '',
+        notes: '',
+      },
+      {
+        id: 'b',
+        name: 'Almoço',
+        time: '12:00',
+        items: [{ food: catalogue[0], grams: 150 }],
+        substitutions: '',
+        notes: '',
+      },
+    ],
+  };
+  const meals = [
+    {
+      ...meal('2026-09-08', [{ food: catalogue[0], grams: 150 }]),
+      name: 'almoco',
+    },
+    meal('2026-09-07'),
+  ];
+  const day = dayAdherence(diet, meals, '2026-09-08');
+  assert.deepEqual(day.done, ['b']);
+  assert.equal(day.ratio, 0.5);
+  assert.equal(Math.round(day.consumed.calories), 248);
+  assert.equal(Math.round(dietTotals(diet).calories), 346);
+  assert.deepEqual(
+    adherenceSeries(diet, meals, ['2026-09-06', '2026-09-07', '2026-09-08']),
+    [0, 0.5, 0.5],
+  );
+  assert.equal(dayAdherence({ meals: [] }, meals, '2026-09-08').ratio, 0);
 });

@@ -12,4 +12,11 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   reporter: [['list'], ['html', { open: 'never' }]],
+  // API local com banco em memória (o app web continua servido de dist/).
+  webServer: {
+    command: 'node server/index.mjs',
+    url: 'http://127.0.0.1:4000/health',
+    env: { NUTRIFOLIO_DB: ':memory:', PORT: '4000' },
+    reuseExistingServer: !process.env.CI,
+  },
 });
